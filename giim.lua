@@ -6,6 +6,7 @@ local infobar = window.create(term.current(),1,resy-1,resx,2)
 
 local toggleControl = true
 
+---@diagnostic disable-next-line: undefined-global
 if periphemu then
   -- this is on craftospc
   toggleControl = false
@@ -186,7 +187,7 @@ end
 
 -- set the info bar to the default
 local function setInfoDefault()
-  setInfo("GIIM v1.0.1 CTRL-H for help")
+  setInfo("GIIM v1.0.2 CTRL-H for help")
 end
 
 -- get input from the info bar, displaying string t
@@ -873,6 +874,10 @@ local function main()
         offsetOffset(0, dir*3)
       end
 
+    elseif event[1] == "term_resize" then
+      resx, resy = term.getSize()
+      docWin.reposition(1,1,resx,resy-2)
+      infobar.reposition(1,resy-1,resx,2)
     end
   end
   for i = 0, 15 do
