@@ -6,10 +6,10 @@ local infobar = window.create(term.current(),1,resy-1,resx,2)
 
 local toggleControl = true
 
--- if periphemu then
---   -- this is on craftospc
---   toggleControl = false
--- end
+if periphemu then
+  -- this is on craftospc
+  toggleControl = false
+end
 
 local selectedFG = '0'
 local selectedBG = 'f'
