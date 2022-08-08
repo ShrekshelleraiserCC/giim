@@ -569,6 +569,7 @@ local function main()
       controlHeld=false
       term.clear()
       term.setCursorPos(1,1)
+      print("Arrows move by page when control is held")
       for k,v in pairs(controlHeldFunctions) do
         if v.help then
           print(v.help)
@@ -813,6 +814,10 @@ local function main()
 
       elseif code == keys.leftCtrl then
         controlHeld = true
+
+      elseif code == keys.home then
+        local x, y = calcDocumentPos()
+        offsetSelect(-x,0)
 
       elseif controlHeld then
         if controlHeldFunctions[code] then
