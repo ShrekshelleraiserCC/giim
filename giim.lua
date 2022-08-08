@@ -366,6 +366,9 @@ local function openbimg(t)
         end
       end
     end
+    applyPalette()
+  else
+    setInfo("Invalid BIMG file")
   end
 end
 -- returns a bimg compatible blit table
@@ -438,7 +441,7 @@ local function openbbf(f)
         end
       end
     end
-    setInfoDefault()
+    applyPalette()
   else
     setInfo("Invalid bbf file")
   end
@@ -513,7 +516,6 @@ local function openFile(fn)
   else
     setInfo("Unable to open file")
   end
-  applyPalette()
 
 end
 
@@ -889,7 +891,7 @@ local function main()
   term.setCursorPos(1,1)
 end
 
-
+local arg = {...}
 -- if a filename is passed in, attempt to load that image
 if arg[1] then
   openFile(arg[1])
