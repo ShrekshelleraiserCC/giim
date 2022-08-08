@@ -4,6 +4,12 @@ local docWin = window.create(term.current(),1,1,resx,resy-2)
 local infobar = window.create(term.current(),1,resy-1,resx,2)
 -- term.redirect(infobar)
 
+local toggleControl = true
+
+-- if periphemu then
+--   -- this is on craftospc
+--   toggleControl = false
+-- end
 
 local selectedFG = '0'
 local selectedBG = 'f'
@@ -813,7 +819,16 @@ local function main()
         offsetSelect(xAnchor-xpos,1)
 
       elseif code == keys.leftCtrl then
-        controlHeld = true
+        if toggleControl then
+          controlHeld = not controlHeld
+          if controlHeld then
+            setInfo("Control active")
+          else
+            setInfoDefault()
+          end
+        else
+          controlHeld = true
+        end
 
       elseif code == keys.home then
         local x, y = calcDocumentPos()
@@ -845,7 +860,7 @@ local function main()
 
     elseif event[1] == "key_up" then
       local code = event[2]
-      if code == keys.leftCtrl then
+      if code == keys.leftCtrl and not toggleControl then
         controlHeld = false
 
       end
