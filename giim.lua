@@ -186,7 +186,7 @@ end
 
 -- set the info bar to the default
 local function setInfoDefault()
-  setInfo("GIIM v1.0.0 CTRL-H for help")
+  setInfo("GIIM v1.0.1 CTRL-H for help")
 end
 
 -- get input from the info bar, displaying string t
