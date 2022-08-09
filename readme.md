@@ -31,4 +31,17 @@ You have access to a few registry functions, and the entire api table (look in `
   * Returns boolean of success.
   * And returns message to display (optional)
 
-`addEventHandler(name,func)` This function allows you to add an event handler. The `func` provided should take `table.unpack({os.pullEvent},2)` as its parameters. There are 2 special event names, `render` which runs every frame after drawing the rulers and image but before making the window visible again, and `main`, which runs every frame after `render`, but before `os.pullEvent`.
+`addEventHandler(name,func)` This function allows you to add an event handler. The `func` provided should take `table.unpack({os.pullEvent},2)` as its parameters. There are 2 special event names, `render` which runs every frame after drawing the rulers and image but before making the window visible again, and `main`, which runs every frame after `render`, but before `os.pullEvent`. If you return `true` then all event handlers for this function that were registered before this plugin was will be skipped.
+
+
+### Example
+
+```lua
+addKey(keys.e, function()
+  api.writeChar("!")
+end, "Example plugin", {control=true,shift=true})
+```
+For more examples, look in `giim.lua` in the lower sections of the files. There are several built in plugins.
+
+### Plugin loading
+In `gplugins/` there is a file `plugins`, simply write a single filename per line, the plugins will be loaded in the order that they are in the file.
