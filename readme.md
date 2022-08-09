@@ -12,23 +12,22 @@ GIIM currently supports saving and loading in
 
 The format used is determined solely by the file extension.
 
-### Plugin support??
-File should just be a onetime executable. The _ENV of the file will be set to contain some API features. 
+## PLUGINS
+In order to make a plugin, simply make a normal `lua` file in the `gplugins` directory.
 
-Can inject its code into the render routine, and into the main event loop
+You have access to a few registry functions, and the entire api table (look in `giim.lua` for more info).
 
-### Custom formats support???
-Add a directory containing scripts named by file extension.
+`addKey(keycode, func, info, modifiers)` This function allows you to register callback functions that will be called on the set keybind being pressed.
 
-these scripts should follow a typical `require` format, returning a table of functions after execution.
+`addFormat(name, save, load)` This function allows you to add a save/load function to add support for other image and document formats. More details below.
 
-This table of functions should contain at least 1 of the following:
-
-* `save(t,f) : boolean, string` 
-  * `t` is a table in the GIIM internal format
+* `save(f) : boolean, string` 
   * `f` is the file handle to the file to save. 
   * Returns boolean of success.
   * And returns message to display (optional).
 * `load(f) : nil | table` 
   * `f` is the file handle to the file we wish to open
-  * Return `nil` or a table in the GIIM internal format
+  * Returns boolean of success.
+  * And returns message to display (optional)
+
+`addEventHandler(name,func)` This function allows you to add an event handler. The `func` provided should take `table.unpack({os.pullEvent},2)` as its parameters. There are 2 special event names, `render` which runs every frame after drawing the rulers and image but before making the window visible again, and `main`, which runs every frame after `render`, but before `os.pullEvent`.
