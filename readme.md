@@ -25,8 +25,9 @@ You have access to a few registry functions, and the entire api table (look in `
   * `f` is the file handle to the file to save. 
   * Returns boolean of success.
   * And returns message to display (optional).
-* `load(f) : nil | table` 
+* `load(f) : boolean | string` 
   * `f` is the file handle to the file we wish to open
+  * should modify `api.document` to match the loaded document
   * Returns boolean of success.
   * And returns message to display (optional)
 
