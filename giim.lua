@@ -774,6 +774,11 @@ local function registerPlugin(func)
   assert(api.loadedPlugins[#api.loadedPlugins][1], "Plugin did not return a name")
 end
 
+
+--- HERE are the default plugins
+-- any of the contents of these functions *could* be placed into their own file, and loaded externally
+
+-- This plugin manages the `control+a` left margin stuff, and the enter keybind
 local function marginPlugin()
   -- initialization function for the margin plugin, a default plugin
   local leftMargin = 1
@@ -797,6 +802,7 @@ local function marginPlugin()
   return "margin", "1.0"
 end
 
+-- This plugin adds a hidable color picker to the right side of the screen
 local function colorPickerPlugin()
   local colorBarActive = false
   addEventHandler("render", function()
@@ -837,6 +843,8 @@ local function colorPickerPlugin()
   return "colorPicker", "1.0"
 end
 
+-- This plugin adds the ability to use the mouse to drag around the canvas
+-- this plugin also adds "paint mode"
 local function mouseControlPlugin()
   local mouseAnchor = {}
   local paintMode = false
@@ -900,6 +908,7 @@ local function mouseControlPlugin()
   return "basicMouse", "1.0"
 end
 
+-- This plugin adds basic movement controls like arrows, home, and layer naviagtion
 local function movementKeyPlugin()
   addKey(keys.backspace,function()
     api.offsetCursor(-1,0)
@@ -948,6 +957,7 @@ local function movementKeyPlugin()
   return "basicKeys", "1.0"
 end
 
+-- This plugin adds some basic features for editing
 local function editingPlugin()
   addKey(keys.f,function()
     local char = tonumber(api.getFooter("Character code? "))
@@ -1045,6 +1055,7 @@ local function editingPlugin()
   return "basicEditing", "1.0"
 end
 
+-- this plugin adds a modifier key indicator in the top left corner
 local function keyIndicatorPlugin()
   local control = 2^2
   local alt = 2^3
