@@ -16,7 +16,7 @@ api.toggleMods = true
 ---@diagnostic disable-next-line: undefined-global
 if periphemu then
   -- this is on craftospc
-  api.toggleMods = true
+  api.toggleMods = false
 end
 
 api.selectedFG = '0' -- selected blit character of FG
