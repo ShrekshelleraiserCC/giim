@@ -1068,9 +1068,10 @@ local function keyIndicatorPlugin()
     char = char + 128
     term.write(string.char(char))
   end)
-  return "keyIndicator", "0"
+  return "keyIndicator", "1.0"
 end
 
+--- Always enabled bare minimum keybinds and event listeners
 local function registerDefault()
   print("Registering base keys..")
   addKey(keys.q, function()
@@ -1084,14 +1085,16 @@ local function registerDefault()
     term.setTextColor(api.hudFG)
     term.clear()
     term.setCursorPos(1,1)
+    local t = {"",""}-- couple blank strings to counter repeated char events
     for k,v in pairs(keyLookup) do
       if v.help then
-        print(v.help)
+        t[#t+1] = v.help
       end
     end
-    term.write("Push enter")
+    textutils.pagedPrint(table.concat(t,"\n"))
+    print("Press enter to continue")
     ---@diagnostic disable-next-line: discard-returns
-    io.read() -- nooo you can't just ignore the return value!!!!!
+    io.read()
     api.resetFooter()
   end, "Help", {control=true})
   addKey(keys.o,function()
