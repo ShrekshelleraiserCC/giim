@@ -9,6 +9,7 @@ local expect = require("cc.expect").expect
 -- You will have access to docWin through term in your plugin
 -- You will also have a few registration functions
 
+api.GIIM_VERSION = "1.1.1" -- do not modify, but you can enforce GIIM version compatibility by comparing with this string
 
 api.toggleMods = true
 
@@ -146,7 +147,7 @@ end
 
 --- set the footer to the default
 function api.resetFooter()
-  api.setFooter("GIIM v1.1.0 CTRL-H for help")
+  api.setFooter(("GIIM v%s CTRL-H for help"):format(api.GIIM_VERSION))
 end
 
 --- get input from the footer, displaying string t
@@ -287,6 +288,9 @@ function api.undo()
   end
 end
 
+api.loadedPlugins = {} -- table indexed by load position
+-- each element will be a 2 entry table {name, ver} where ver might be nil
+
 local keyLookup = {} -- private lookup field for active keys
 
 local CONTROL_HELD = 0x10000
@@ -378,6 +382,7 @@ end
 --- END OF PLUGIN ACCESSIBLE OBJECTS
 --- You will NOT have access to anything below here inside of your plugin.
 --- But you are welcome to look at the built in plugins
+
 
 local running = true
 --- Iterate through and run all the event handlers
@@ -540,6 +545,7 @@ local function bimgPlugin()
   end
 
   addFormat("bimg",savebimg,loadbimg)
+  return "bimg", "1.0"
 end
 
 local function bbfPlugin()
@@ -625,6 +631,7 @@ local function bbfPlugin()
   end
 
   addFormat("bbf",savebbf,loadbbf)
+  return "bbf", "1.0"
 end
 
 -- applies a palette based on the current layer
@@ -763,7 +770,8 @@ end
 -- sets the env properly, and calls it
 local function registerPlugin(func)
   setfenv(func, _PLUGIN_ENV)
-  func() -- this should initialize all listeners, keys, etc
+  api.loadedPlugins[#api.loadedPlugins+1] = {func()} -- this should initialize all listeners, keys, etc
+  assert(api.loadedPlugins[#api.loadedPlugins][1], "Plugin did not return a name")
 end
 
 local function marginPlugin()
@@ -784,9 +792,9 @@ local function marginPlugin()
   addKey(keys.a,function()
     leftMargin, _ = api.getCursorPos()
     api.setFooter(("Set lMargin to %u"):format(leftMargin))
-    term.clear()
-    sleep(1)
   end,"Set left margin",{control=true})
+
+  return "margin", "1.0"
 end
 
 local function colorPickerPlugin()
@@ -826,6 +834,7 @@ local function colorPickerPlugin()
       end
     end
   end)
+  return "colorPicker", "1.0"
 end
 
 local function mouseControlPlugin()
@@ -887,59 +896,59 @@ local function mouseControlPlugin()
       api.setFooter("Paint mode disabled")
     end
   end,"Toggle paint mode", {control=true})
+
+  return "basicMouse", "1.0"
 end
 
-local function registerDefault()
-  print("Registering default keys..")
-  addKey(keys.q, function()
-    if api.getFooterConfirm("Really quit? ") then
-      running = false
+local function movementKeyPlugin()
+  addKey(keys.backspace,function()
+    api.offsetCursor(-1,0)
+    api.writeChar()
+  end)
+  addKey(keys.delete,function()
+    api.writeChar()
+  end)
+  addKey(keys.home,function()
+    local x, y = api.getCursorPos()
+    api.offsetCursor(-x,0)
+  end)
+  addKey(keys.left,function()
+    api.offsetCursor(-1,0)
+  end)
+  addKey(keys.right,function()
+    api.offsetCursor(1,0)
+  end)
+  addKey(keys.up,function()
+    api.offsetCursor(0,-1)
+  end)
+  addKey(keys.down,function()
+    api.offsetCursor(0,1)
+  end)
+  addKey(keys.l,function()
+    local targetLayer = tonumber(api.getFooterDefault("Layer [%u]? ", api.activeLayer))
+    if targetLayer and targetLayer > 0 then
+      api.activeLayer = targetLayer
+      api.resetFooter()
+      applyPalette()
+      undoBuffer = {} -- empty the undo buffer
+    else
+      api.setFooter("Invalid layer")
+    end
+  end,"Change layer",{control=true})
+  addKey(keys.g, function()
+    local currentx, currenty = api.getCursorPos()
+    local targetx = tonumber(api.getFooterDefault("X [%u]? ", currentx))
+    local targety = tonumber(api.getFooterDefault("Y [%u]? ", currenty))
+    if targetx and targety then
+      api.offsetCursor(targetx-currentx,targety-currenty)
     end
     api.resetFooter()
-  end, "Quit", {control=true})
-  addKey(keys.k,function()
-    local currentWidth, currentHeight, currentLayers = table.unpack(api.getDocumentSize())
-    local targetWidth = tonumber(api.getFooterDefault("Width ("..api.PAPER_WIDTH.."pp) [%u]: ", currentWidth))
-    local targetHeight = tonumber(api.getFooterDefault("Height ("..api.PAPER_HEIGHT.."pp) [%u]: ",currentHeight))
-    local targetLayers = tonumber(api.getFooterDefault("Layers [%u]: ",currentLayers))
-    if targetWidth and targetHeight and targetLayers then
-      api.cropDocument(targetWidth, targetHeight,targetLayers)
-      api.resetFooter()
-    else
-      api.setFooter("Invalid input.")
-    end
-  end, "Crop", {control=true})
-  addKey(keys.h,function() -- TODO, redo this
-    term.setBackgroundColor(api.hudBG)
-    term.setTextColor(api.hudFG)
-    term.clear()
-    term.setCursorPos(1,1)
-    for k,v in pairs(keyLookup) do
-      if v.help then
-        print(v.help)
-      end
-    end
-    term.write("Push enter")
-    ---@diagnostic disable-next-line: discard-returns
-    io.read() -- nooo you can't just ignore the return value!!!!!
-    api.resetFooter()
-  end, "Help", {control=true})
-  addKey(keys.o,function()
-    local fn = api.getFooter("Open file? ")
-    if fn ~= "" then
-      loadFile(fn)
-    else
-      api.resetFooter()
-    end
-  end,"Open",{control=true})
-  addKey(keys.s,function()
-    local fn = api.getFooter("Save file? ")
-    if fn ~= "" then
-      saveFile(fn)
-    else
-      api.resetFooter()
-    end
-  end,"Save",{control=true})
+  end, "Goto", {control=true})
+
+  return "basicKeys", "1.0"
+end
+
+local function editingPlugin()
   addKey(keys.f,function()
     local char = tonumber(api.getFooter("Character code? "))
     if char and char >= 0 and char <= 255 then
@@ -982,38 +991,6 @@ local function registerDefault()
       api.setFooter("Invalid colors")
     end
   end,"Change default background",{control=true})
-  addKey(keys.l,function()
-    local targetLayer = tonumber(api.getFooterDefault("Layer [%u]? ", api.activeLayer))
-    if targetLayer and targetLayer > 0 then
-      api.activeLayer = targetLayer
-      api.resetFooter()
-      applyPalette()
-      undoBuffer = {} -- empty the undo buffer
-    else
-      api.setFooter("Invalid layer")
-    end
-  end,"Change layer",{control=true})
-  addKey(keys.g, function()
-    local currentx, currenty = api.getCursorPos()
-    local targetx = tonumber(api.getFooterDefault("X [%u]? ", currentx))
-    local targety = tonumber(api.getFooterDefault("Y [%u]? ", currenty))
-    if targetx and targety then
-      api.offsetCursor(targetx-currentx,targety-currenty)
-    end
-    api.resetFooter()
-  end, "Goto", {control=true})
-  addKey(keys.m,function()
-    local offsetx = tonumber(api.getFooterDefault("X offset [%u]? ", 0))
-    local offsety = tonumber(api.getFooterDefault("Y offset [%u]? ", 0))
-    if offsetx and offsety then
-      api.moveDocument(offsetx,offsety)
-      undoBuffer = {} -- empty the undo buffer
-    end
-    api.resetFooter()
-  end, "Move document", {control=true})
-  addKey(keys.z,function()
-    api.undo()
-  end, "Undo", {control=true})
   addKey(keys.b,function()
     local changeDef = api.getFooterConfirm("Change default (y/*)? ")
     local blitChar = tonumber(api.getFooter("Blit Char? "),16)
@@ -1040,34 +1017,92 @@ local function registerDefault()
     end
   
   end, "Change palette color", {control=true})
-  addKey(keys.backspace,function()
-    api.offsetCursor(-1,0)
-    api.writeChar()
-  end)
-  addKey(keys.delete,function()
-    api.writeChar()
-  end)
-  addKey(keys.home,function()
-    local x, y = api.getCursorPos()
-    api.offsetCursor(-x,0)
-  end)
-  addKey(keys.left,function()
-    api.offsetCursor(-1,0)
-  end)
-  addKey(keys.right,function()
-    api.offsetCursor(1,0)
-  end)
-  addKey(keys.up,function()
-    api.offsetCursor(0,-1)
-  end)
-  addKey(keys.down,function()
-    api.offsetCursor(0,1)
-  end)
-
+  addKey(keys.m,function()
+    local offsetx = tonumber(api.getFooterDefault("X offset [%u]? ", 0))
+    local offsety = tonumber(api.getFooterDefault("Y offset [%u]? ", 0))
+    if offsetx and offsety then
+      api.moveDocument(offsetx,offsety)
+      undoBuffer = {} -- empty the undo buffer
+    end
+    api.resetFooter()
+  end, "Move document", {control=true})
+  addKey(keys.k,function()
+    local currentWidth, currentHeight, currentLayers = table.unpack(api.getDocumentSize())
+    local targetWidth = tonumber(api.getFooterDefault("Width ("..api.PAPER_WIDTH.."pp) [%u]: ", currentWidth))
+    local targetHeight = tonumber(api.getFooterDefault("Height ("..api.PAPER_HEIGHT.."pp) [%u]: ",currentHeight))
+    local targetLayers = tonumber(api.getFooterDefault("Layers [%u]: ",currentLayers))
+    if targetWidth and targetHeight and targetLayers then
+      api.cropDocument(targetWidth, targetHeight,targetLayers)
+      api.resetFooter()
+    else
+      api.setFooter("Invalid input.")
+    end
+  end, "Crop", {control=true})
   addEventHandler("char",function(char)
     api.writeChar(char)
     api.offsetCursor(1,0)
   end)
+  return "basicEditing", "1.0"
+end
+
+local function keyIndicatorPlugin()
+  local control = 2^2
+  local alt = 2^3
+  local shift = 2^0
+  addEventHandler("render", function()
+    term.setCursorPos(1,1)
+    local char = ((api.controlHeld and control) or 0 )
+    char = char+((api.altHeld and alt) or 0)
+    char = char+((api.shiftHeld and shift) or 0)
+    char = char + 128
+    term.write(string.char(char))
+  end)
+  return "keyIndicator", "0"
+end
+
+local function registerDefault()
+  print("Registering base keys..")
+  addKey(keys.q, function()
+    if api.getFooterConfirm("Really quit? ") then
+      running = false
+    end
+    api.resetFooter()
+  end, "Quit", {control=true})
+  addKey(keys.h,function() -- TODO, redo this
+    term.setBackgroundColor(api.hudBG)
+    term.setTextColor(api.hudFG)
+    term.clear()
+    term.setCursorPos(1,1)
+    for k,v in pairs(keyLookup) do
+      if v.help then
+        print(v.help)
+      end
+    end
+    term.write("Push enter")
+    ---@diagnostic disable-next-line: discard-returns
+    io.read() -- nooo you can't just ignore the return value!!!!!
+    api.resetFooter()
+  end, "Help", {control=true})
+  addKey(keys.o,function()
+    local fn = api.getFooter("Open file? ")
+    if fn ~= "" then
+      loadFile(fn)
+    else
+      api.resetFooter()
+    end
+  end,"Open",{control=true})
+  addKey(keys.s,function()
+    local fn = api.getFooter("Save file? ")
+    if fn ~= "" then
+      saveFile(fn)
+    else
+      api.resetFooter()
+    end
+  end,"Save",{control=true})
+  addKey(keys.z,function()
+    api.undo()
+  end, "Undo", {control=true})
+
   addEventHandler("key", function(code)
     if code == keys.leftCtrl then
       if api.toggleMods then
@@ -1109,43 +1144,67 @@ local function registerDefault()
       api.shiftHeld = false
     end
   end)
-
-  print("Registering default plugins..")
-
-  registerPlugin(marginPlugin)
-  registerPlugin(colorPickerPlugin)
-  registerPlugin(mouseControlPlugin)
-  registerPlugin(bbfPlugin)
-  registerPlugin(bimgPlugin)
 end
 
+local internalPluginsList = {
+  margin=marginPlugin,
+  colorPicker=colorPickerPlugin,
+  basicMouse=mouseControlPlugin,
+  bbf=bbfPlugin,
+  bimg=bimgPlugin,
+  basicKeys=movementKeyPlugin,
+  basicEditing=editingPlugin,
+  keyIndicator=keyIndicatorPlugin
+}
+
 local function loadPlugins()
+  local function _writeDefaultPlugins(f)
+    for k,v in pairs(internalPluginsList) do
+      f.writeLine("!"..k)
+      registerPlugin(v)
+    end
+  end
   if fs.exists("gplugins") then
     if fs.exists("gplugins/plugins") then
       local f = assert(fs.open("gplugins/plugins","r"))
       local pluginNames = {}
       repeat
         local fn = f.readLine()
-        pluginNames[#pluginNames+1] = fn
+        if fn and fn:sub(1,1) ~= "#" then
+          -- ignore lines with # at the start
+          pluginNames[#pluginNames+1] = fn
+        end
       until fn == nil
       f.close()
       for i,n in ipairs(pluginNames) do
-        local f, err = loadfile(fs.combine("gplugins/",n), nil)
+        local f, err
+        if n:sub(1,1) == "!" then
+          f = internalPluginsList[n:sub(2)]
+          err = "Invalid internal plugin"
+        else
+          f, err = loadfile(fs.combine("gplugins/",n), nil)
+        end
         if f then
           print("Loading", n)
           registerPlugin(f)
         else
           print(string.format("Unable to load plugin %s: %s",n, err))
-          return false
+          print("Push enter to continue, anything else to exit")
+          local e,k = os.pullEvent("key")
+          if k ~= keys.enter then
+            return false
+          end
         end
       end
     else
       local f = fs.open("gplugins/plugins","w")
+      _writeDefaultPlugins(f)
       f.close()
     end
   else
     fs.makeDir("gplugins")
     local f = fs.open("gplugins/plugins","w")
+    _writeDefaultPlugins(f)
     f.close()
   end
   return true
