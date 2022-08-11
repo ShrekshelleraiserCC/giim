@@ -9,7 +9,7 @@ local expect = require("cc.expect").expect
 -- You will have access to docWin through term in your plugin
 -- You will also have a few registration functions
 
-api.GIIM_VERSION = "1.1.1" -- do not modify, but you can enforce GIIM version compatibility by comparing with this string
+api.GIIM_VERSION = "1.1.2" -- do not modify, but you can enforce GIIM version compatibility by comparing with this string
 
 api.toggleMods = true
 
@@ -51,9 +51,9 @@ local undoBuffer = {}
 
 --- Checks that every element in the given chain exists, ie. table[arg[1]][arg[2]]...
 -- @treturn boolean
-function api.checkExists(table, ...)
-  expect(1,table,"table")
-  local t = table
+function api.checkExists(tab, ...)
+  expect(1,tab,"table")
+  local t = tab
   for _, val in ipairs({...}) do
     t = t[val]
     if not t then
@@ -83,9 +83,12 @@ function api.setChar(x,y,char)
   api.document.im[api.activeLayer][y] = api.document.im[api.activeLayer][y] or {}
   undoBuffer[#undoBuffer+1] = {0, x, y, api.document.im[api.activeLayer][y][x]} -- this works because the original blit table is not being modified
   if char == nil then
-    api.document.im[api.activeLayer][y][x] = nil
+    api.document.im[api.activeLayer][y][x] = nil -- TODO, the document size might expand and not get shrunk back down
   else
     api.document.im[api.activeLayer][y][x] = {char, api.selectedFG, api.selectedBG} -- see, it's just getting replaced.
+    api.cachedDocumentSize[1] = math.max(x, api.cachedDocumentSize[1])
+    api.cachedDocumentSize[2] = math.max(y, api.cachedDocumentSize[2])
+    api.cachedDocumentSize[3] = math.max(api.activeLayer, api.cachedDocumentSize[3])
   end
 end
 
@@ -179,7 +182,9 @@ function api.getFooterDefault(t,def)
   return input
 end
 
+
 --- Get the document size
+-- this is an intensive function, call only when required
 -- @treturn table {res x, res y, n layers}
 function api.getDocumentSize()
   local maxx = 0
@@ -195,8 +200,15 @@ function api.getDocumentSize()
       maxy = math.max(maxy,y)
     end
   end
-  return {maxx, maxy, maxlayer}
+  api.cachedDocumentSize = {maxx, maxy, maxlayer}
+  return api.cachedDocumentSize
 end
+
+-- whenever possible, use the values from this variable insteaed of calling `getDocumentSize` directly
+-- whenever getDocumentSize is called, this value will be updated
+-- This value may be larger than the document, but will never be smaller than the document.
+-- If you REQUIRE precise size, then you can call getDocumentSize
+api.cachedDocumentSize = {1,1,1}
 
 --- Crop the document to fit within bounds
 -- @tparam maxx int
@@ -230,6 +242,7 @@ function api.cropDocument(maxx,maxy,maxlayer)
       api.document.pal[l] = nil
     end
   end
+  api.cachedDocumentSize = {maxx, maxy, maxlayer}
 end
 
 --- move the {1,1} position of the document by dx,dy
@@ -261,7 +274,7 @@ function api.moveDocument(dx,dy)
     end
   end
   api.document = newDocument
-
+  api.getDocumentSize()
 end
 
 --- Undo the last thing in the undo buffer
@@ -399,18 +412,28 @@ end
 --- render the document
 local function renderDocument()
   docWin.setVisible(false)
+  docWin.setTextColor(2^tonumber(api.selectedFG,16))
+  docWin.setBackgroundColor(2^tonumber(api.selectedBG,16))
   docWin.clear()
-  for y = 2, resy-2 do
-    for x = 2, resx do
-      docWin.setCursorPos(x,y)
-      local xindex = offset[1]+x-2
+  if api.activeLayer <= api.cachedDocumentSize[3] then
+    for y = 2, resy-2 do
       local yindex = offset[2]+y-2
-      if api.checkExists(api.document, "im", api.activeLayer, yindex, xindex) then
-        -- this co-ordinate has a character defined
-        local ch, fg, bg = table.unpack(api.document.im[api.activeLayer][yindex][xindex])
-        docWin.blit(ch, fg, bg or api.selectedBG)
-      else
-        docWin.blit(" ",api.selectedFG,api.selectedBG)
+      if yindex > api.cachedDocumentSize[2] then
+        break -- this is beyond possible document positions
+      end
+      for x = 2, resx do
+        docWin.setCursorPos(x,y)
+        local xindex = offset[1]+x-2
+        if xindex > api.cachedDocumentSize[1] then
+          break
+        end
+        if api.checkExists(api.document, "im", api.activeLayer, yindex, xindex) then
+          -- this co-ordinate has a character defined
+          local ch, fg, bg = table.unpack(api.document.im[api.activeLayer][yindex][xindex])
+          docWin.blit(ch, fg, bg or api.selectedBG)
+        else
+          docWin.blit(" ",api.selectedFG,api.selectedBG)
+        end
       end
     end
   end
@@ -716,6 +739,7 @@ local function loadFile(fn)
         api.setFooter(message or "Successfully opened file")
         api.activeLayer = 1
         applyPalette()
+        api.getDocumentSize()
       else
         api.setFooter(message or "Error opening file")
       end
@@ -723,7 +747,9 @@ local function loadFile(fn)
       local status, message = formatLUT.load[fn:sub(-4)](f)
       if status then
         api.setFooter(message or "Successfully opened file")
+        api.activeLayer = 1
         applyPalette()
+        api.getDocumentSize()
       else
         api.setFooter(message or "Error opening file")
       end
