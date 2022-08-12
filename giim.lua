@@ -304,6 +304,31 @@ end
 api.loadedPlugins = {} -- table indexed by load position
 -- each element will be a 2 entry table {name, ver} where ver might be nil
 
+-- Returns true if the provided plugin name and version are loaded
+-- provide nil for version to accept any version
+function api.hasPlugin(name, version)
+  for k,v in ipairs(api.loadedPlugins) do
+    if v[1] == name and ((not version) or v[2] == version) then
+      return true
+    end
+  end
+  return false
+end
+
+-- Throw an error if the requested plugin isn't present
+-- @tparam string name
+-- @tparam string name of this plugin
+-- @tparam string|nil version
+function api.requirePlugin(name, hname, version)
+  local fstring
+  if version then
+    fstring = string.format("Plugin %s requires version %s %s", hname, version, name)
+  else
+    fstring = string.format("Plugin %s requires any version %s", hname, name)
+  end
+  assert(api.hasPlugin(name,version), fstring)
+end
+
 local keyLookup = {} -- private lookup field for active keys
 
 local CONTROL_HELD = 0x10000
@@ -738,6 +763,8 @@ local function loadFile(fn)
       if status then
         api.setFooter(message or "Successfully opened file")
         api.activeLayer = 1
+        local x, y = api.getCursorPos()
+        api.offsetCursor(-x, -y)
         applyPalette()
         api.getDocumentSize()
       else
@@ -748,6 +775,8 @@ local function loadFile(fn)
       if status then
         api.setFooter(message or "Successfully opened file")
         api.activeLayer = 1
+        local x, y = api.getCursorPos()
+        api.offsetCursor(-x, -y)
         applyPalette()
         api.getDocumentSize()
       else
@@ -807,13 +836,35 @@ end
 -- This plugin manages the `control+a` left margin stuff, and the enter keybind
 local function marginPlugin()
   -- initialization function for the margin plugin, a default plugin
+  api.requirePlugin("basicKeys", "margin")
   local leftMargin = 1
+  local rightMargin = 1
+  local useRightMargin = false
   addEventHandler("render",function()
     -- add a marker for the current X anchor position
     local x = leftMargin - offset[1] + 2
     if x > 0 and x < resx then
       docWin.setCursorPos(x,1)
       docWin.write("\25")
+    end
+    if useRightMargin then
+      x = rightMargin - offset[1] + 2
+      if x > 0 and x < resx then
+        docWin.setCursorPos(x,1)
+        docWin.write("\25")
+      end
+    end
+  end)
+  addEventHandler("char",function()
+    local x, _ = api.getCursorPos()
+    if useRightMargin and x > rightMargin then
+      api.offsetCursor(leftMargin-x, 1)
+    end
+  end) -- this should occur after the main key event
+  addEventHandler("key",function(key)
+    local x, _ = api.getCursorPos()
+    if useRightMargin and key == keys.backspace and x == leftMargin then
+      api.offsetCursor(rightMargin-leftMargin,-1)
     end
   end)
   addKey(keys.enter,function()
@@ -824,8 +875,16 @@ local function marginPlugin()
     leftMargin, _ = api.getCursorPos()
     api.setFooter(("Set lMargin to %u"):format(leftMargin))
   end,"Set left margin",{control=true})
-
-  return "margin", "1.0"
+  addKey(keys.e,function()
+    rightMargin, _ = api.getCursorPos()
+    useRightMargin = not useRightMargin
+    if useRightMargin then
+      api.setFooter(("Set rMargin to %u"):format(rightMargin))
+    else
+      api.setFooter("Disabled rMargin")
+    end
+  end, "Set right margin", {control=true})
+  return "margin", "1.1"
 end
 
 -- This plugin adds a hidable color picker to the right side of the screen
@@ -1187,6 +1246,16 @@ local function registerDefault()
 end
 
 local internalPluginsList = {
+  -- order list
+  "basicKeys",
+  "basicMouse",
+  "colorPicker",
+  "basicEditing",
+  "keyIndicator",
+  "margin",
+  "bbf",
+  "bimg",
+  -- function lookup
   margin=marginPlugin,
   colorPicker=colorPickerPlugin,
   basicMouse=mouseControlPlugin,
@@ -1199,9 +1268,9 @@ local internalPluginsList = {
 
 local function loadPlugins()
   local function _writeDefaultPlugins(f)
-    for k,v in pairs(internalPluginsList) do
-      f.writeLine("!"..k)
-      registerPlugin(v)
+    for k,v in ipairs(internalPluginsList) do
+      f.writeLine("!"..v)
+      registerPlugin(internalPluginsList[v])
     end
   end
   if fs.exists("gplugins") then
