@@ -860,11 +860,11 @@ local function marginPlugin()
     if useRightMargin and x > rightMargin then
       api.offsetCursor(leftMargin-x, 1)
     end
-  end) -- this should occur after the main key event
+  end) -- this should occur before the main char event
   addEventHandler("key",function(key)
     local x, _ = api.getCursorPos()
     if useRightMargin and key == keys.backspace and x == leftMargin then
-      api.offsetCursor(rightMargin-leftMargin,-1)
+      api.offsetCursor(rightMargin-leftMargin+1,-1)
     end
   end)
   addKey(keys.enter,function()
