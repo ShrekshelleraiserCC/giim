@@ -9,7 +9,7 @@ local expect = require("cc.expect").expect
 -- You will have access to docWin through term in your plugin
 -- You will also have a few registration functions
 
-api.GIIM_VERSION = "1.1.3" -- do not modify, but you can enforce GIIM version compatibility by comparing with this string
+api.GIIM_VERSION = "1.1.4" -- do not modify, but you can enforce GIIM version compatibility by comparing with this string
 
 api.toggleMods = true
 
@@ -825,8 +825,14 @@ end
 -- sets the env properly, and calls it
 local function registerPlugin(func)
   setfenv(func, _PLUGIN_ENV)
-  api.loadedPlugins[#api.loadedPlugins+1] = {func()} -- this should initialize all listeners, keys, etc
-  assert(api.loadedPlugins[#api.loadedPlugins][1], "Plugin did not return a name")
+  local pluginInfo = {func()} -- this should initialize all listeners, keys, etc
+  api.loadedPlugins[#api.loadedPlugins+1] = pluginInfo
+  assert(pluginInfo[1], "Plugin did not return a name")
+  if pluginInfo[2] then
+    print(("[%s](%s) Loaded"):format(pluginInfo[1],pluginInfo[2]))
+  else
+    print(("[%s] Loaded"):format(pluginInfo[1]))
+  end
 end
 
 
@@ -931,7 +937,7 @@ end
 -- This plugin adds the ability to use the mouse to drag around the canvas
 -- this plugin also adds "paint mode"
 local function mouseControlPlugin()
-  local mouseAnchor = {}
+  local mouseAnchor = {1,1}
   local paintMode = false
   local paintChar = " "
   local paintLength = 0
@@ -1294,7 +1300,6 @@ local function loadPlugins()
           f, err = loadfile(fs.combine("gplugins/",n), nil)
         end
         if f then
-          print("Loading", n)
           registerPlugin(f)
         else
           print(string.format("Unable to load plugin %s: %s",n, err))
@@ -1320,7 +1325,6 @@ local function loadPlugins()
 end
 
 local function tick()
-  renderAll()
   callEventHandlers("main")
   local event = {os.pullEventRaw()}
   if event[1] == "terminate" then
@@ -1340,6 +1344,7 @@ local function main(arg)
   if not loadPlugins() then
     return
   end
+  print(("Plugins loaded. GIIM v%s"):format(api.GIIM_VERSION))
   -- if a filename is passed in, attempt to load that image
   if arg[1] then
     loadFile(arg[1])
@@ -1347,6 +1352,7 @@ local function main(arg)
   applyPalette()
   api.resetFooter()
   while running do
+    renderAll()
     tick()
   end
   for i = 0, 15 do
@@ -1356,6 +1362,9 @@ local function main(arg)
   term.setTextColor(colors.white)
   term.clear()
   term.setCursorPos(1,1)
+  print(("Thank you for using GIIM v%s"):format(api.GIIM_VERSION))
+  print("Licensed under MIT, source available at:")
+  print("https://github.com/MasonGulu/cc-giim")
 end
 
 
