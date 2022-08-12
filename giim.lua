@@ -588,12 +588,18 @@ local function bimgPlugin()
         bimg[layer][y][3] = table.concat(bimg[layer][y][3])
       end
     end
+    bimg.version = "1.0.0"
+    bimg.animation = maxlayer > 1
+    if bimg.animation then
+      -- multiple layers
+      bimg.secondsPerFrame = 0.1 -- maybe make this configurable in the future?
+    end
     f.write(textutils.serialise(bimg,{compact=true}))
     return true, "BIMG saved."
   end
 
   addFormat("bimg",savebimg,loadbimg)
-  return "bimg", "1.0"
+  return "bimg", "1.1"
 end
 
 local function bbfPlugin()
