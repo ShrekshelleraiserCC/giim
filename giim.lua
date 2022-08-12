@@ -9,7 +9,7 @@ local expect = require("cc.expect").expect
 -- You will have access to docWin through term in your plugin
 -- You will also have a few registration functions
 
-api.GIIM_VERSION = "1.1.2" -- do not modify, but you can enforce GIIM version compatibility by comparing with this string
+api.GIIM_VERSION = "1.1.3" -- do not modify, but you can enforce GIIM version compatibility by comparing with this string
 
 api.toggleMods = true
 
