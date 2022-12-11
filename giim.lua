@@ -9,7 +9,7 @@ local expect = require("cc.expect").expect
 -- You will have access to docWin through term in your plugin
 -- You will also have a few registration functions
 
-api.GIIM_VERSION = "1.1.4" -- do not modify, but you can enforce GIIM version compatibility by comparing with this string
+api.GIIM_VERSION = "INDEV" -- do not modify, but you can enforce GIIM version compatibility by comparing with this string
 
 api.toggleMods = true
 
@@ -1368,48 +1368,54 @@ local function loadPlugins()
       registerPlugin(internalPluginsList[v])
     end
   end
-  if fs.exists("gplugins") then
-    if fs.exists("gplugins/plugins") then
-      local f = assert(fs.open("gplugins/plugins","r"))
-      local pluginNames = {}
-      repeat
-        local fn = f.readLine()
-        if fn and fn:sub(1,1) ~= "#" then
-          -- ignore lines with # at the start
-          pluginNames[#pluginNames+1] = fn
-        end
-      until fn == nil
-      f.close()
-      for i,n in ipairs(pluginNames) do
-        local f, err
-        if n:sub(1,1) == "!" then
-          f = internalPluginsList[n:sub(2)]
-          err = "Invalid internal plugin"
-        else
-          f, err = loadfile(fs.combine("gplugins/",n), nil)
-        end
-        if f then
-          registerPlugin(f)
-        else
-          print(string.format("Unable to load plugin %s: %s",n, err))
-          print("Push enter to continue, anything else to exit")
-          local e,k = os.pullEvent("key")
-          if k ~= keys.enter then
-            return false
-          end
+  -- if fs.exists("gplugins") then
+  local pluginDir = "gplugins/"
+  if fs.exists("lib") then
+    -- use POSIX inspired path instead
+    pluginDir = "lib/giim/"
+  end
+  local loadOrderFile = pluginDir.."plugins"
+  if fs.exists(loadOrderFile) then
+    local f = assert(fs.open(loadOrderFile,"r"))
+    local pluginNames = {}
+    repeat
+      local fn = f.readLine()
+      if fn and fn:sub(1,1) ~= "#" then
+        -- ignore lines with # at the start
+        pluginNames[#pluginNames+1] = fn
+      end
+    until fn == nil
+    f.close()
+    for i,n in ipairs(pluginNames) do
+      local f, err
+      if n:sub(1,1) == "!" then
+        f = internalPluginsList[n:sub(2)]
+        err = "Invalid internal plugin"
+      else
+        f, err = loadfile(fs.combine(pluginDir,n), nil)
+      end
+      if f then
+        registerPlugin(f)
+      else
+        print(string.format("Unable to load plugin %s: %s",n, err))
+        print("Push enter to continue, anything else to exit")
+        local e,k = os.pullEvent("key")
+        if k ~= keys.enter then
+          return false
         end
       end
-    else
-      local f = fs.open("gplugins/plugins","w")
-      _writeDefaultPlugins(f)
-      f.close()
     end
   else
-    fs.makeDir("gplugins")
-    local f = fs.open("gplugins/plugins","w")
+    local f = fs.open(loadOrderFile,"w")
     _writeDefaultPlugins(f)
     f.close()
   end
+  -- else
+  --   fs.makeDir("gplugins")
+  --   local f = fs.open("gplugins/plugins","w")
+  --   _writeDefaultPlugins(f)
+  --   f.close()
+  -- end
   return true
 end
 

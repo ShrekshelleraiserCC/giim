@@ -13,7 +13,9 @@ GIIM currently supports saving and loading in
 The format used is determined solely by the file extension.
 
 ## PLUGINS
-In order to make a plugin, simply make a normal `lua` file in the `gplugins` directory. The file should return the plugin's name, and the plugin's version.
+In order to make a plugin, simply make a normal `lua` file in the plugin directory. The file should return the plugin's name, and the plugin's version.
+
+The plugin directory may vary, by default it is `/gplugins/`, but if `/lib/` exists, it will instead be `/lib/giim/`.
 
 You have access to a few registry functions, and the entire api table (look in `giim.lua` for more info).
 
@@ -46,9 +48,9 @@ return "examplePlugin", "1.0" -- your plugin should return a name at least, vers
 For more examples, look in `giim.lua` in the lower sections of the files. There are several built in plugins.
 
 ### Plugin loading
-In `gplugins/` there is a file `plugins`, simply write a single filename per line, the plugins will be loaded in the order that they are in the file.
+In the plugin directory there is a file `plugins`, simply write a single filename per line, the plugins will be loaded in the order that they are in the file.
 
-Lines beginning with # are treated as comments, and will not be loaded. Lines beginning with `!` mark an internal plugin, you can disable internal plugins, but doingso without an adequite replacement may render the editor unusable. When generating a new `gplugins/plugin` file, the default plugins are automatically populated.
+Lines beginning with # are treated as comments, and will not be loaded. Lines beginning with `!` mark an internal plugin, you can disable internal plugins, but doingso without an adequite replacement may render the editor unusable. When generating a new `plugins` file, the default plugins are automatically populated.
 
 ### TODO
 * Add a plugin to add toggle-able interaction boxes (like the one in `colorPickerPlugin`)
