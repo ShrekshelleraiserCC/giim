@@ -49,3 +49,9 @@ For more examples, look in `giim.lua` in the lower sections of the files. There 
 In `gplugins/` there is a file `plugins`, simply write a single filename per line, the plugins will be loaded in the order that they are in the file.
 
 Lines beginning with # are treated as comments, and will not be loaded. Lines beginning with `!` mark an internal plugin, you can disable internal plugins, but doingso without an adequite replacement may render the editor unusable. When generating a new `gplugins/plugin` file, the default plugins are automatically populated.
+
+### TODO
+* Add a plugin to add toggle-able interaction boxes (like the one in `colorPickerPlugin`)
+* "Optimize the rendering"????
+I can optimize it by drawing to a larger window, then just scrolling
+around that window.

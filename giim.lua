@@ -1,6 +1,6 @@
-
 local resx, resy = term.getSize()
-local docWin = window.create(term.current(),1,1,resx,resy-2)
+local viewport = window.create(term.current(),1,1,resx,resy-2)
+local documentRender = window.create(viewport,1,1,1,1)
 local infobar = window.create(term.current(),1,resy-1,resx,2)
 local api = {}
 local expect = require("cc.expect").expect
@@ -34,6 +34,8 @@ local selPos = {1,1} -- where in the visable region the cursor has selected
 api.controlHeld = false
 api.shiftHeld = false
 api.altHeld = false
+
+api.fullRender = true -- do a full render next pass
 
 local INTERNAL_FORMAT_EXTENSION = "giim"
 
@@ -70,6 +72,8 @@ function api.getCursorPos()
   return offset[1]+selPos[1]-1,offset[2]+selPos[2]-1
 end
 
+local updateDocumentPosition
+
 --- Set the character at the given x,y position in the document (adds to undo buffer)
 -- @tparam x int
 -- @tparam y int
@@ -84,12 +88,23 @@ function api.setChar(x,y,char)
   undoBuffer[#undoBuffer+1] = {0, x, y, api.document.im[api.activeLayer][y][x]} -- this works because the original blit table is not being modified
   if char == nil then
     api.document.im[api.activeLayer][y][x] = nil -- TODO, the document size might expand and not get shrunk back down
+    documentRender.setCursorPos(x,y)
+    documentRender.setTextColor(api.hudFG)
+    documentRender.setBackgroundColor(api.hudBG)
+    documentRender.write(" ")
   else
     api.document.im[api.activeLayer][y][x] = {char, api.selectedFG, api.selectedBG} -- see, it's just getting replaced.
     api.cachedDocumentSize[1] = math.max(x, api.cachedDocumentSize[1])
     api.cachedDocumentSize[2] = math.max(y, api.cachedDocumentSize[2])
     api.cachedDocumentSize[3] = math.max(api.activeLayer, api.cachedDocumentSize[3])
+    if (x > api.cachedDocumentSize[1] or y > api.cachedDocumentSize[2]) then
+      updateDocumentPosition()
+      api.fullRender = true
+    end
+    documentRender.setCursorPos(x,y)
+    documentRender.blit(table.unpack(api.document.im[api.activeLayer][y][x]))
   end
+  -- api.fullRender = true
 end
 
 --- set the character at the current document position (adds to undo buffer)
@@ -290,12 +305,14 @@ function api.undo()
     api.document.im[api.activeLayer] = api.document.im[api.activeLayer] or {}
     api.document.im[api.activeLayer][y] = api.document.im[api.activeLayer][y] or {}
     api.document.im[api.activeLayer][y][x] = undoinfo[4]
+    api.fullRender = true
 
   elseif undoinfo[1] == 1 then
     -- series
     for i = 1, undoinfo[2] do
       api.undo()
     end
+    api.fullRender = true
   else
     error("Invalid entry in undo table")
   end
@@ -385,6 +402,11 @@ end
 
 local formatLUT = {save={},load={}}
 
+local pow2LUT = {}
+for i = 0, 15 do
+  pow2LUT[i] = 2^i
+end
+
 --- Add a new format handler
 -- @tparam string name
 -- @tparam nil|function save
@@ -428,101 +450,117 @@ local function callEventHandlers(name, ...)
   if eventLookup[name] then
     local n = #eventLookup[name]
     for i = n, 1, -1 do
-      if eventLookup[name][i](...) then -- call each event handler for this type
+      local data = {pcall(eventLookup[name][i], ...)}
+      if not data[1] then
+        -- TODO error handle gracefully
+        for i = 0, 15 do
+          term.setPaletteColor(pow2LUT[i], term.nativePaletteColor(pow2LUT[i]))
+        end
+        term.setBackgroundColor(colors.black)
+        term.setTextColor(colors.white)
+        term.clear()
+        term.setCursorPos(1,1)
+        print("An error has occured while calling event handler for " .. name)
+        error(data[2])
+      elseif data[2] then -- call each event handler for this type
         break -- an event handler can return true to stop previously loaded plugins from executing
       end
     end
   end
 end
---- render the document
-local function renderDocument()
-  docWin.setVisible(false)
-  docWin.setTextColor(2^tonumber(api.selectedFG,16))
-  docWin.setBackgroundColor(2^tonumber(api.selectedBG,16))
-  docWin.clear()
-  if api.activeLayer <= api.cachedDocumentSize[3] then
-    for y = 2, resy-2 do
-      local yindex = offset[2]+y-2
-      if yindex > api.cachedDocumentSize[2] then
-        break -- this is beyond possible document positions
-      end
-      for x = 2, resx do
-        docWin.setCursorPos(x,y)
-        local xindex = offset[1]+x-2
-        if xindex > api.cachedDocumentSize[1] then
-          break
-        end
-        if api.checkExists(api.document, "im", api.activeLayer, yindex, xindex) then
-          -- this co-ordinate has a character defined
-          local ch, fg, bg = table.unpack(api.document.im[api.activeLayer][yindex][xindex])
-          docWin.blit(ch, fg, bg or api.selectedBG)
-        else
-          docWin.blit(" ",api.selectedFG,api.selectedBG)
+
+function updateDocumentPosition()
+  local docWidth, docHeight, docLayers = api.cachedDocumentSize[1], api.cachedDocumentSize[2], api.cachedDocumentSize[3]
+  local docOffX, docOffY = offset[1], offset[2]
+  documentRender.reposition(-docOffX, -docOffY, docWidth, docHeight)
+end
+--- render the FULL document
+local function renderDocument(full)
+  if full then
+    documentRender.setVisible(false)
+    local docWidth, docHeight, docLayers = api.cachedDocumentSize[1], api.cachedDocumentSize[2], api.cachedDocumentSize[3]
+    documentRender.setTextColor(2^tonumber(api.selectedFG,16))
+    documentRender.setBackgroundColor(2^tonumber(api.selectedBG,16))
+    documentRender.clear()
+    if api.activeLayer <= docLayers then
+      for y = 1, docHeight do
+        for x = 1, docWidth do
+          documentRender.setCursorPos(x,y)
+          if api.checkExists(api.document, "im", api.activeLayer, y, x) then
+            -- this co-ordinate has a character defined
+            local ch, fg, bg = table.unpack(api.document.im[api.activeLayer][y][x])
+            documentRender.blit(ch, fg, bg or api.selectedBG)
+          else
+            documentRender.blit(" ",api.selectedFG,api.selectedBG)
+          end
         end
       end
     end
+    documentRender.setVisible(true)
+  else
+    documentRender.redraw()
   end
-  -- generate the horizontal ruler
-  local hozruler = ""
-  local sideString = string.rep(" ", math.floor((api.PAPER_WIDTH-2-3)/2))
-  -- possible bug for if paper width is even
-  for x = math.ceil(offset[1]/api.PAPER_WIDTH)-1,
-  math.ceil((offset[1]+resx)/api.PAPER_WIDTH) do
-    hozruler = hozruler..
-    string.format("|"..sideString.."%3u"..sideString.."|", x)
-  end
-  docWin.setBackgroundColor(api.hudBG)
-  docWin.setTextColor(api.hudFG)
-  docWin.setCursorPos(2,1)
-  docWin.write(hozruler:sub(((offset[1]-1)%api.PAPER_WIDTH)+1+api.PAPER_WIDTH))
+end
 
-  -- generate the vertical ruler
-  local verruler = ""
-  local vertString = string.rep(" ", math.floor((api.PAPER_HEIGHT-2-3)/2))
-  for x = math.ceil(offset[2]/api.PAPER_HEIGHT)-1,
-  math.ceil((offset[2]+resy)/api.PAPER_HEIGHT) do
-    verruler = verruler..
-    string.format("-"..vertString.."%3u"..vertString.."-", x)
-  end
-  local sindex = ((offset[2]-1)%api.PAPER_HEIGHT)+1+api.PAPER_HEIGHT
-  for y = 2, resy do
-    docWin.setCursorPos(1,y)
-    docWin.write(verruler:sub(sindex,sindex))
-    sindex = sindex + 1
-  end
+
+local leftPointer = window.create(viewport, 1, 2, 1, 1)
+leftPointer.setBackgroundColor(api.hudBG)
+leftPointer.setTextColor(api.hudFG)
+leftPointer.setCursorPos(1,1)
+leftPointer.write("\16")
+local topPointer = window.create(viewport, 2, 1, 1, 1)
+topPointer.setBackgroundColor(api.hudBG)
+topPointer.setTextColor(api.hudFG)
+topPointer.setCursorPos(1,1)
+topPointer.write("\31")
+
+local function renderAll()
+  viewport.setBackgroundColor(api.hudBG)
+  viewport.setVisible(false)
+  viewport.clear()
+
+  updateDocumentPosition()
+  renderDocument(api.fullRender)
+  api.fullRender = false
 
   callEventHandlers("render") -- call all registered event handlers
 
-  -- now add markers to the rulers to show where the cursor currently is
-  -- do it in this order so the cursor markers are always visable
+  -- add markers to indicate current cursor position
   local x, y = table.unpack(selPos)
-  docWin.setCursorPos(1,y+1)
-  docWin.write("\16")
-  docWin.setCursorPos(x+1,1)
-  docWin.write("\31")
+  leftPointer.reposition(1,y+1)
+  leftPointer.setBackgroundColor(api.hudBG)
+  leftPointer.setTextColor(api.hudFG)
+  leftPointer.setCursorPos(1,1)
+  leftPointer.write("\16")
+  topPointer.reposition(x+1,1)
+  topPointer.setBackgroundColor(api.hudBG)
+  topPointer.setTextColor(api.hudFG)
+  topPointer.setCursorPos(1,1)
+  topPointer.write("\31")
 
+  -- redraw the documentRender
+  -- then draw the docWin
 
-  docWin.setVisible(true)
-end
-
-local function renderAll()
-  renderDocument()
-  local x, y = api.getCursorPos()
   local fg
   if api.checkExists(api.document, "im", api.activeLayer, y, x, 2) then
     fg = api.furthestColorLUT[api.document.im[api.activeLayer][y][x][3]]
   else
     fg = api.selectedFG
   end
-  term.setTextColor(2^tonumber(fg,16))
-  term.setBackgroundColor(api.hudBG)
-  term.setCursorPos(selPos[1]+1,selPos[2]+1)
-  term.setCursorBlink(true)
+  viewport.setTextColor(2^tonumber(fg,16))
+  local x, y = api.getCursorPos()
+  viewport.setTextColor(2^tonumber(fg,16))
+  viewport.setBackgroundColor(api.hudBG)
+  viewport.setCursorPos(selPos[1]+1,selPos[2]+1)
+  viewport.setCursorBlink(true)
+  viewport.setVisible(true)
+  infobar.redraw()
+
 end
 
 local _PLUGIN_ENV = setmetatable({
   api=api,
-  term=docWin, -- anything you set in _ENV will be shared with other plugins
+  term=viewport, -- anything you set in _ENV will be shared with other plugins
   addEventHandler=addEventHandler,
   addKey=addKey,
   removeKey=removeKey,
@@ -709,17 +747,20 @@ local function applyPalette()
       colorUsed = api.document.pal.def[i]
     else
       -- fall back to the 16 default colors
-      colorUsed = colors.packRGB(term.nativePaletteColor(2^i))
+      colorUsed = colors.packRGB(term.nativePaletteColor(pow2LUT[i]))
     end
-    docWin.setPaletteColor(2^i, colorUsed)
+    viewport.setPaletteColor(pow2LUT[i], colorUsed)
+    term.setPaletteColor(pow2LUT[i], colorUsed)
+    documentRender.setPaletteColor(pow2LUT[i], colorUsed)
+    infobar.setPaletteColor(pow2LUT[i], colorUsed)
     local colorAverage = _ca(colorUsed)
     if colorAverage < darkest then
       darkest = colorAverage
-      api.hudBG = 2^i
+      api.hudBG = pow2LUT[i]
     end
     if colorAverage > brightest then
       brightest = colorAverage
-      api.hudFG = 2^i
+      api.hudFG = pow2LUT[i]
     end
     colorsUsed[i] = colorUsed
   end
@@ -743,12 +784,12 @@ local function applyPalette()
       end
     end
   end
-  term.setBackgroundColor(api.hudBG)
-  term.clear()
+  viewport.setBackgroundColor(api.hudBG)
+  viewport.clear()
   api.resetFooter()
 end
 
--- new loading/saving interface
+-- loading/saving interface
 -- load(f) where f is file handle
 -- save(f) where f is file handle
 -- return boolean of success, and an optional message
@@ -779,6 +820,7 @@ local function loadFile(fn)
     elseif formatLUT.load[fn:sub(-4)] then
       local status, message = formatLUT.load[fn:sub(-4)](f)
       if status then
+        api.fullRender = true
         api.setFooter(message or "Successfully opened file")
         api.activeLayer = 1
         local x, y = api.getCursorPos()
@@ -856,14 +898,14 @@ local function marginPlugin()
     -- add a marker for the current X anchor position
     local x = leftMargin - offset[1] + 2
     if x > 0 and x < resx then
-      docWin.setCursorPos(x,1)
-      docWin.write("\25")
+      term.setCursorPos(x,1)
+      term.write("\25")
     end
     if useRightMargin then
       x = rightMargin - offset[1] + 2
       if x > 0 and x < resx then
-        docWin.setCursorPos(x,1)
-        docWin.write("\25")
+        term.setCursorPos(x,1)
+        term.write("\25")
       end
     end
   end)
@@ -1152,20 +1194,59 @@ local function editingPlugin()
   return "basicEditing", "1.0"
 end
 
+-- This plugin adds some ruler rendering features
+local function rulersPlugin()
+  addEventHandler("render", function()
+    -- generate the horizontal ruler
+    local hozruler = ""
+    local sideString = string.rep(" ", math.floor((api.PAPER_WIDTH-2-3)/2))
+    -- possible bug for if paper width is even
+    for x = math.ceil(offset[1]/api.PAPER_WIDTH)-1,
+    math.ceil((offset[1]+resx)/api.PAPER_WIDTH) do
+      hozruler = hozruler..
+      string.format("|"..sideString.."%3u"..sideString.."|", x)
+    end
+    term.setBackgroundColor(api.hudBG)
+    term.setTextColor(api.hudFG)
+    term.setCursorPos(2,1)
+    term.write(hozruler:sub(((offset[1]-1)%api.PAPER_WIDTH)+1+api.PAPER_WIDTH))
+
+    -- generate the vertical ruler
+    local verruler = ""
+    local vertString = string.rep(" ", math.floor((api.PAPER_HEIGHT-2-3)/2))
+    for x = math.ceil(offset[2]/api.PAPER_HEIGHT)-1,
+    math.ceil((offset[2]+resy)/api.PAPER_HEIGHT) do
+      verruler = verruler..
+      string.format("-"..vertString.."%3u"..vertString.."-", x)
+    end
+    local sindex = ((offset[2]-1)%api.PAPER_HEIGHT)+1+api.PAPER_HEIGHT
+    for y = 2, resy do
+      term.setCursorPos(1,y)
+      term.write(verruler:sub(sindex,sindex))
+      sindex = sindex + 1
+    end
+  end)
+
+  return "rulers", "1.0"
+end
+
 -- this plugin adds a modifier key indicator in the top left corner
 local function keyIndicatorPlugin()
   local control = 2^2
   local alt = 2^3
   local shift = 2^0
+  local keyIndicatorSpot = window.create(viewport,1,1,1,1)
   addEventHandler("render", function()
-    term.setCursorPos(1,1)
+    keyIndicatorSpot.setCursorPos(1,1)
     local char = ((api.controlHeld and control) or 0 )
     char = char+((api.altHeld and alt) or 0)
     char = char+((api.shiftHeld and shift) or 0)
     char = char + 128
-    term.write(string.char(char))
+    keyIndicatorSpot.setBackgroundColor(api.hudBG)
+    keyIndicatorSpot.setTextColor(api.hudFG)
+    keyIndicatorSpot.write(string.char(char))
   end)
-  return "keyIndicator", "1.0"
+  return "keyIndicator", "1.1"
 end
 
 --- Always enabled bare minimum keybinds and event listeners
@@ -1261,10 +1342,11 @@ local internalPluginsList = {
   -- order list
   "basicKeys",
   "basicMouse",
+  "rulers",
+  "margin",
   "colorPicker",
   "basicEditing",
   "keyIndicator",
-  "margin",
   "bbf",
   "bimg",
   -- function lookup
@@ -1275,7 +1357,8 @@ local internalPluginsList = {
   bimg=bimgPlugin,
   basicKeys=movementKeyPlugin,
   basicEditing=editingPlugin,
-  keyIndicator=keyIndicatorPlugin
+  keyIndicator=keyIndicatorPlugin,
+  rulers=rulersPlugin,
 }
 
 local function loadPlugins()
@@ -1340,8 +1423,8 @@ local function tick()
   end
   if event[1] == "term_resize" then
     resx, resy = term.getSize()
-    docWin.reposition(1,1,resx,resy-2)
     infobar.reposition(1,resy-1,resx,2)
+    viewport.reposition(1,1,resx,resy-2)
   end
 end
 
@@ -1362,7 +1445,7 @@ local function main(arg)
     tick()
   end
   for i = 0, 15 do
-    term.setPaletteColor(2^i, term.nativePaletteColor(2^i))
+    term.setPaletteColor(pow2LUT[i], term.nativePaletteColor(pow2LUT[i]))
   end
   term.setBackgroundColor(colors.black)
   term.setTextColor(colors.white)
