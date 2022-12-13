@@ -1,0 +1,18 @@
+giim plugins - add new features to giim
+
+-- File location and format --
+
+Plugins are Lua files placed in the '/gplugins'
+folder. Alternatively, if the '/lib' folder
+exists, a Unix file heirarchy is assumed and
+that folder changes to '/lib/giim'.
+
+-- Functions --
+
+See https://github.com/MasonGulu/cc-giim for
+an up-to-date list of functions that are
+exposed to plugins.
+
+-- See also --
+
+See 'help giim'.
