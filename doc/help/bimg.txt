@@ -15,3 +15,4 @@ This help page was written by Tomodachi94 for the giim project.
 
 -- See also --
 'help bbf'
+'help nfp'
