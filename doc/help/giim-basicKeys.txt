@@ -1,0 +1,17 @@
+giim basic keys -
+
+This plugin adds extra keybinds to giim.
+
+-- Controls --
+
+Backspace - Move the cursor backwards once.
+Delete - Remove a pixel.
+Home - Move to the start of a row.
+Up, Down, Left, Right Arrow - Move in the corresponding direction.
+L - Select layer.
+G - Go to specific pixel.
+
+-- See also --
+
+'help giim-plugins'
+'help giim-default-plugins'
