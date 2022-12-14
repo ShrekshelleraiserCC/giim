@@ -13,6 +13,17 @@ See https://github.com/MasonGulu/cc-giim for
 an up-to-date list of functions that are
 exposed to plugins.
 
+-- Configuration --
+
+Plugins installed into the plugin directory
+need to be enabled in a file titled 'plugins'
+inside of that plugin directory.
+
+When first ran, the plugins file is created by
+giim. Internal plugins are marked by a preceding
+exclamation point. They  can be disabled by 
+
 -- See also --
 
 See 'help giim'.
+

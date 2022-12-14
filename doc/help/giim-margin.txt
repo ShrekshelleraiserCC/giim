@@ -1,0 +1,15 @@
+giim margins plugin - modify the margins of a document
+
+The margins plugin is a built-in plugin for giim.
+It allows the user to change the margins of a document.
+
+-- Controls --
+
+Ctrl-A - Change left margin
+Ctrl-E - Change right margin
+
+-- See also --
+
+'help giim-plugins' has more information on plugins.
+'help giim-default-plugins' has a list of default plugins.
+
