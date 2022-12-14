@@ -1,0 +1,5 @@
+giim nfp support -
+
+Optional plugin for giim that supports the nfp file format.
+
+See 'help giim-plugins' and 'help nfp' for more information.

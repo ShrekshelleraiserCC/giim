@@ -1,0 +1,5 @@
+giim bbf support -
+
+Plugin for giim that supports the bbf file format.
+
+See 'help giim-plugins' and 'help bbf' for more information.
