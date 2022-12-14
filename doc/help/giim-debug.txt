@@ -1,0 +1,11 @@
+giim debugger plugin - print all loaded plugins
+
+This optional plugin lists all plugins when toggled.
+
+-- Controls --
+
+Ctrl-Alt-D - Print all plugins.
+
+-- See also --
+
+'help giim-plugins'
