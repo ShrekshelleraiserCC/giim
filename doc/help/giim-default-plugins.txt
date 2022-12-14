@@ -12,9 +12,7 @@ keyIndicator
 margin
 rulers
 
-In addition, there are two
-plugins that can optionally
-be installed:
+In addition, there are two plugins that can optionally be installed:
 
 debug
 nfp

@@ -1,8 +1,6 @@
 bbf - compact image format
 
-BBF is a custom image format. In the format,
-one pixel is two bytes, leading to extremely
-small files.
+BBF is a custom image format. In the format, one pixel is two bytes, leading to extremely small files.
 
 -- Reference implementation --
 
