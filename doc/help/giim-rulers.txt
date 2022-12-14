@@ -1,0 +1,10 @@
+giim rulers plugin - Show measurements in a document
+
+This is a simple plugin that displays measurements on a document.
+
+There are no controls.
+
+-- See also --
+
+'help giim-plugins'
+'help giim-default-plugins'
