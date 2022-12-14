@@ -1,0 +1,8 @@
+giim color picker plugin -
+
+This plugin adds a hideable color picker.
+
+-- See also --
+
+'help giim-plugins'
+'help giim-default-plugins'
