@@ -1,0 +1,14 @@
+nfp - the built-in image format
+
+NFP is the default image of the 'paint' tool and the 'paintutils' library.
+
+In the format, each color is represented by a hex value (0-16). A newline indicates a new row in the image.
+
+-- Author --
+
+This help page was written by Tomodachi94 for the giim project.
+
+-- See also --
+'help paint'
+'help bimg'
+'help bbf'

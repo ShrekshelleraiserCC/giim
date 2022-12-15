@@ -1,0 +1,18 @@
+bimg - standardized image format
+
+The format is based on a serialized table created with 'textutils.serialize'.
+
+It is comprised of metadata and the image source.
+
+-- Specification --
+
+The full specification is available at
+https://github.com/SkyTheCodeMaster/bimg/blob/master/spec.md
+
+-- Author --
+
+This help page was written by Tomodachi94 for the giim project.
+
+-- See also --
+'help bbf'
+'help nfp'

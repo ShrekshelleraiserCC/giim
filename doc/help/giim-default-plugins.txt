@@ -1,0 +1,27 @@
+giim default plugins - Default plugins included with giim
+
+-- List --
+
+basicEditing
+basicKeys
+basicMouse
+bbf
+bimg
+colorPicker
+keyIndicator
+margin
+rulers
+
+In addition, there are two plugins that can optionally be installed:
+
+debug
+nfp
+
+-- Manual --
+
+Help for these plugins can be accessed with 'help giim-[pluginname]'.
+
+-- Configuration --
+
+See 'help giim-plugins' section "Configuration" for more information.
+

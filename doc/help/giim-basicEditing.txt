@@ -1,0 +1,16 @@
+giim editing plugin - Basic commands for modifying a document
+
+This plugin adds filling and cropping, and allows you to move the document and set the default background.
+
+-- Controls --
+
+Ctrl+B - Change pallete color
+Ctrl+D - Change the default background
+Ctrl+F - Activate the fill tool
+Ctrl+I - Show information
+Ctrl+M - Move the document
+
+-- See also --
+
+'help giim-plugins'
+'help giim-default-plugins'

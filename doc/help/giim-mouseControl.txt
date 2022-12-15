@@ -1,0 +1,12 @@
+giim mouse control plugin - adds painting and dragging with the mouse
+
+The giim mouseControl plugin allows the user to "drag" around the screen with the mouse, as well as paint.
+
+-- Controls --
+
+Ctrl-P - Toggle paint mode
+
+-- See also --
+
+'help giim-plugins'
+'help giim-default-plugins'

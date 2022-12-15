@@ -1,0 +1,16 @@
+bbf - compact image format
+
+BBF is a custom image format. In the format, one pixel is two bytes, leading to extremely small files.
+
+-- Reference implementation --
+
+A reference implementation is available at
+https://github.com/9551-Dev/BLBFOR.
+
+-- Author --
+
+This help page was written by Tomodachi94 for the giim project.
+
+-- See also --
+'help bimg'
+'help nfp'

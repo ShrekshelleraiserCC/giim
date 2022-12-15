@@ -1,0 +1,10 @@
+giim key indicator plugin - Show pressed keys
+
+The keyIndicator plugin displays pressed keys in the upper left corner.
+
+It has no controls.
+
+-- See also --
+
+'help giim-plugins'
+'help giim-default-plugins'

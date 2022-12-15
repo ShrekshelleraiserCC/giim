@@ -1,0 +1,24 @@
+giim -  image editor
+
+-- Usage --
+
+giim [FILE].bimg
+giim [FILE].bbf
+giim [FILE].giim
+
+-- About --
+
+giim is an image editor that looks strangely like Vim.
+
+-- Controls --
+
+Ctrl-O - Open document
+Ctrl-S - Save document
+Ctrl-H - Show help
+Ctrl-Q - Quit program
+
+More controls can be added by plugins, see 'help giim-plugins'.
+
+-- Plugins --
+
+See 'help giim-plugins' for more information.
